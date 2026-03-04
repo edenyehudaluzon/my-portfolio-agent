@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 # Configuration
-st.set_page_config(page_title="Investment Intelligence Agent", layout="wide")
+st.set_page_config(page_title="Eden's Investment Agent", layout="wide")
 
 # Helper Functions
 def color_daily_change(val):
@@ -22,7 +22,7 @@ def get_ai_summary(ticker):
     if not news: return "Technical volatility detected. No specific news headlines."
     return f"Insight: {news[0]['title']}"
 
-# Persistent Data Structure (Simulating a database)
+# Persistent Data Structure (Eden & Osher Portfolios)
 if 'portfolios' not in st.session_state:
     st.session_state.portfolios = {
         "התיק של עדן": {
@@ -62,14 +62,13 @@ selected_name = st.sidebar.selectbox("Active Portfolio", list(st.session_state.p
 current_data = st.session_state.portfolios[selected_name]
 
 # --- UI Tabs ---
-tab1, tab2, tab3 = st.tabs(["📈 Portfolio Lab", "🔬 Valuation Engine", "📝 Strategy Board"])
+tab1, tab2, tab3 = st.tabs(["📈 Portfolio Lab", "🔬 מחשבון הערכת שווי", "📝 Strategy Board"])
 
 with tab1:
     st.header(f"Portfolio Lab: {selected_name}")
     
     if current_data['stocks']:
         tickers = list(current_data['stocks'].keys())
-        # Fetching Market Data
         data = yf.download(tickers + ['SPY', 'QQQ'], period="2d")['Close']
         live_prices = data.iloc[-1]
         prev_prices = data.iloc[-2]
@@ -81,9 +80,7 @@ with tab1:
             avg_cost = sum(x['qty'] * x['price'] for x in txs) / qty
             curr_p = live_prices[t]
             
-            # Fetch Fundamental Info
             info = yf.Ticker(t).info
-            
             total_ret = ((curr_p / avg_cost) - 1) * 100
             daily_chg = ((curr_p / prev_prices[t]) - 1) * 100
 
@@ -92,57 +89,3 @@ with tab1:
 
             rows.append({
                 "Ticker": t, "Qty": qty, "Avg Cost": f"${avg_cost:.2f}",
-                "Price": f"${curr_p:.2f}", "Total Return": f"{total_ret:.2f}%",
-                "Daily Change": f"{daily_chg:.2f}%",
-                "P/E": info.get('trailingPE', "N/A"),
-                "Forward P/E": info.get('forwardPE', "N/A"),
-                "5Y Avg P/E": info.get('fiveYearAvgTrailingPE', "N/A")
-            })
-
-        df = pd.DataFrame(rows)
-        
-        # Table View
-        st.subheader("Holdings Analysis")
-        st.dataframe(df.style.applymap(color_daily_change, subset=['Daily Change']), use_container_width=True)
-        
-        # Graphs Section
-        col_pie, col_hist = st.columns([1, 1])
-        
-        with col_pie:
-            # Allocation Pie Chart
-            fig_pie = px.pie(df, values=[qty*float(p.replace('$','')) for qty,p in zip(df['Qty'], df['Price'])], 
-                             names='Ticker', title='Portfolio Allocation', hole=0.4)
-            st.plotly_chart(fig_pie, use_container_width=True)
-            
-        with col_hist:
-            # Benchmark Comparison (30 Days)
-            hist_data = yf.download(tickers + ['SPY', 'QQQ'], period="1mo")['Close'].pct_change().cumsum() * 100
-            # Simplify portfolio to an equal-weighted average for comparison
-            hist_data['Your Portfolio'] = hist_data[tickers].mean(axis=1)
-            
-            fig_line = go.Figure()
-            fig_line.add_trace(go.Scatter(x=hist_data.index, y=hist_data['Your Portfolio'], name='Portfolio', line=dict(color='gold', width=4)))
-            fig_line.add_trace(go.Scatter(x=hist_data.index, y=hist_data['SPY'], name='S&P 500', line=dict(dash='dash')))
-            fig_line.add_trace(go.Scatter(x=hist_data.index, y=hist_data['QQQ'], name='NASDAQ', line=dict(dash='dash')))
-            
-            fig_line.update_layout(title='30-Day Cumulative Return vs Benchmarks (%)', xaxis_title='Date', yaxis_title='Return %')
-            st.plotly_chart(fig_line, use_container_width=True)
-
-with tab2:
-    st.header("Valuation Engine (DCF / Multiple Hybrid)")
-    ticker_val = st.text_input("Ticker for analysis:", value="AMZN").upper()
-    stock_eval = yf.Ticker(ticker_val)
-    f_info = stock_eval.info
-    curr_eval_p = f_info.get('currentPrice', 1)
-    eps = f_info.get('trailingEps', 0)
-    
-    st.write(f"**Market Price:** ${curr_eval_p} | **Trailing EPS:** ${eps}")
-    
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.subheader("Conservative")
-        g1 = st.number_input("Growth %", value=5.0, key="g1")
-        pe1 = st.number_input("Target P/E", value=15.0, key="pe1")
-    with c2:
-        st.subheader("Base Case")
-        g2 = st.
